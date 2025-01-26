@@ -5,3 +5,6 @@ packaging==24.2
 pipx==1.7.1
 platformdirs==4.3.6
 userpath==1.9.2
+python-telegram-bot
+python-dotenv
+aiogram
