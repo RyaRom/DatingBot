@@ -1,8 +1,26 @@
 import os
+import re
+from pprint import pprint
 
 from aiogram.types import MessageEntity
 from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from bot.users_repository import UserRepository
+
+name_regex = re.compile(r"[ а-яА-ЯёЁa-zA-Z]{2,100}")
+age_regex = re.compile(r"\d{1,3}")
 
 load_dotenv()
 bot_key = os.getenv('BOT_KEY')
 admins = [int(admin) for admin in os.getenv('ADMINS').split(', ')]
+
+client = AsyncIOMotorClient(os.getenv('MONGODB_URL'))
+db = client['bot_dating']
+users = db['user_data']
+
+user_repo = UserRepository(users)
+
+# TODO: Make a mongo storage for temp data in fsm
+# TODO: Change polling to webhook
+# TODO: Advanced filters with kinks and stuff

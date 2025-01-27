@@ -10,11 +10,11 @@ from bot.config import admins
 from bot.filters import AdminFilter
 
 admin_router = Router()
+admin_router.message.filter(AdminFilter(admin_ids=admins))
 
 
 @admin_router.message(
     Command('admin'),
-    AdminFilter(admins)
 )
 async def admin_panel(message: Message, bot: Bot):
     await message.answer('Admin panel will be here')
