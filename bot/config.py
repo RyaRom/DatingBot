@@ -1,8 +1,7 @@
 import os
 import re
-from pprint import pprint
+from aioredis import Redis
 
-from aiogram.types import MessageEntity
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -18,6 +17,8 @@ admins = [int(admin) for admin in os.getenv('ADMINS').split(', ')]
 client = AsyncIOMotorClient(os.getenv('MAIN_DB_URL'))
 db = client['bot_dating']
 users = db['user_data']
+
+redis = Redis.from_url(os.getenv('REDIS_URL'))
 
 user_repo = UserRepository(users)
 
