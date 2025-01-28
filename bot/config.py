@@ -5,7 +5,7 @@ from aioredis import Redis
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from bot.users_repository import UserRepository
+from data.users_repository import UserRepository
 
 name_regex = re.compile(r"[ а-яА-ЯёЁa-zA-Z]{2,100}")
 age_regex = re.compile(r"\d{1,3}")

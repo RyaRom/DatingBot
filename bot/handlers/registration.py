@@ -1,19 +1,17 @@
 import re
 import logging
-from aiogram import Router, Bot, types
-from aiogram.filters.callback_data import CallbackData
+from aiogram import Router
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram import F
-from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
 from bot.config import user_repo, name_regex, age_regex
 from bot.handlers.menu import MenuStates, load_profile
 from bot.keyboards.registration_keyb import gender_options, gender_kb, orientation_kb, orientation_options, location_kb, \
     skip_button_kb, skip_button
-from bot.users_repository import User, Location
+from data.users_repository import User
 
 reg_router = Router()
 
