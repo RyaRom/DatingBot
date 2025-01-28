@@ -1,4 +1,5 @@
 from typing import Optional
+import logging
 
 from motor.motor_asyncio import AsyncIOMotorCollection
 from pydantic import BaseModel
@@ -17,7 +18,7 @@ class User(BaseModel):
     orientation: int  # 0 - male, 1 - female, 2 - all
     city: str
     photo_id: str
-    gridfs_photo_id: str # TODO: Add local gridfs in db
+    # gridfs_photo_id: str  # TODO: Add local gridfs in db
     bio: Optional[str] = None
     location: Optional[Location] = None
 
@@ -36,7 +37,7 @@ class UserRepository:
             return User(**userdata)
         return None
 
-    async def update_user(self, user: User):
-        pass
-
-#TODO: finish user repository
+    async def save_user(self, user: User):
+        logging.info(f'User {user.user_id} saved in db')
+        await self.connection.insert_one(user.model_dump())
+# TODO: finish user repository
