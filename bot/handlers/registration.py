@@ -10,6 +10,7 @@ from aiogram import F
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
 from bot.config import user_repo, name_regex, age_regex
+from bot.handlers.menu import MenuStates, load_profile
 from bot.keyboards.registration_keyb import gender_options, gender_kb, orientation_kb, orientation_options, location_kb, \
     skip_button_kb, skip_button
 from bot.users_repository import User, Location
@@ -32,7 +33,7 @@ class RegStates(StatesGroup):
 async def first_start(message: Message, state: FSMContext):
     logging.info(f'User {message.from_user.id} started registration')
 
-    await message.reply(text='Введите имя')
+    await message.answer(text='Введите имя')
     await state.set_state(RegStates.waiting_for_name)
 
 
@@ -43,13 +44,11 @@ async def get_name(message: Message, state: FSMContext):
     logging.info(f'User {message.from_user.id} entered name {name}')
 
     if not re.match(name_regex, name):
-        await message.reply(text='Некорректное имя. Введите еще раз')
+        await message.answer(text='Некорректное имя. Введите еще раз')
         return
-    user = User()
-    user.user_id = message.from_user.id
-    user.username = name
+    user = {'user_id': message.from_user.id, 'username': name}
     await state.update_data(user_obj=user)
-    await message.reply(text='Введите возраст')
+    await message.answer(text='Введите возраст')
     await state.set_state(RegStates.waiting_for_age)
 
 
@@ -60,13 +59,13 @@ async def get_age(message: Message, state: FSMContext):
     logging.info(f'User {message.from_user.id} entered age {age}')
 
     if not re.match(age_regex, age):
-        await message.reply(text='Некорректный возраст. Введите еще раз')
+        await message.answer(text='Некорректный возраст. Введите еще раз')
         return
     data = await state.get_data()
     user = data['user_obj']
-    user.age = int(age)
+    user['age'] = int(age)
     await state.update_data(user_obj=user)
-    await message.reply(
+    await message.answer(
         text='Введите пол',
         reply_markup=gender_kb()
     )
@@ -80,7 +79,7 @@ async def get_gender(message: Message, state: FSMContext):
     logging.info(f'User {message.from_user.id} entered gender {gender}')
 
     if gender not in gender_options:
-        await message.reply(
+        await message.answer(
             text='Некорректный пол. Введите еще раз',
             reply_markup=gender_kb()
         )
@@ -88,13 +87,13 @@ async def get_gender(message: Message, state: FSMContext):
     data = await state.get_data()
     user = data['user_obj']
     if gender == gender_options[0]:
-        user.gender = 0
+        user['gender'] = 0
     elif gender == gender_options[1]:
-        user.gender = 1
+        user['gender'] = 1
     elif gender == gender_options[2]:
-        user.gender = 2
+        user['gender'] = 2
     await state.update_data(user_obj=user)
-    await message.reply(
+    await message.answer(
         text='Кого вы ищите?',
         reply_markup=orientation_kb()
     )
@@ -108,7 +107,7 @@ async def get_orientation(message: Message, state: FSMContext):
     logging.info(f'User {message.from_user.id} entered orientation {orientation}')
 
     if orientation not in orientation_options:
-        await message.reply(
+        await message.answer(
             text='Некорректный ответ. Введите еще раз',
             reply_markup=orientation_kb()
         )
@@ -116,13 +115,13 @@ async def get_orientation(message: Message, state: FSMContext):
     data = await state.get_data()
     user = data['user_obj']
     if orientation == orientation_options[0]:
-        user.orientation = 0
+        user['orientation'] = 0
     elif orientation == orientation_options[1]:
-        user.orientation = 1
+        user['orientation'] = 1
     else:
-        user.orientation = 2
+        user['orientation'] = 2
     await state.update_data(user_obj=user)
-    await message.reply(
+    await message.answer(
         text='Для поиска людей рядом можно выбрать местоположение',
         reply_markup=location_kb()
     )
@@ -137,13 +136,14 @@ async def get_location(message: Message, state: FSMContext):
 
         data = await state.get_data()
         user = data['user_obj']
-        user.location = Location(type='Point', coordinates=[location.longitude, location.latitude])
+        user['location'] = {'type': 'Point', 'coordinates': [location.longitude, location.latitude]}
         await state.update_data(user_obj=user)
-        await message.reply(
-            text='Напиши что нибудь о себе',
-            reply_markup=skip_button_kb()
-        )
-        await state.set_state(RegStates.waiting_for_bio)
+
+    await message.answer(
+        text='Напиши что нибудь о себе',
+        reply_markup=skip_button_kb()
+    )
+    await state.set_state(RegStates.waiting_for_bio)
 
 
 @reg_router.message(RegStates.waiting_for_bio)
@@ -155,14 +155,16 @@ async def get_bio(message: Message, state: FSMContext):
     if bio != skip_button:
         data = await state.get_data()
         user = data['user_obj']
-        user.bio = bio
+        user['bio'] = bio
         await state.update_data(user_obj=user)
 
-    await message.reply(
-        text='Введите город',
+    await message.answer(
+        text='Напиши свой город',
         reply_markup=ReplyKeyboardRemove()
     )
     await state.set_state(RegStates.waiting_for_city)
+
+
 # TODO: Add fav song or smth like that feature here
 
 
@@ -174,14 +176,16 @@ async def get_city(message: Message, state: FSMContext):
 
     data = await state.get_data()
     user = data['user_obj']
-    user.city = city
+    user['city'] = city
     await state.update_data(user_obj=user)
 
-    await message.reply(
-        text='Отправьте фотографию для профиля',
+    await message.answer(
+        text='Отправь фотографию для профиля',
         reply_markup=ReplyKeyboardRemove()
     )
     await state.set_state(RegStates.waiting_for_photo)
+
+
 # TODO: Add video instead of photo option / multiple photos
 
 @reg_router.message(F.photo, RegStates.waiting_for_photo)
@@ -192,8 +196,16 @@ async def get_photo(message: Message, state: FSMContext):
 
     data = await state.get_data()
     user = data['user_obj']
-    user.photo_id = photo
-    await state.update_data(user_obj=user)
-    await user_repo.create_user(user)
-    await message.reply(text='Регистрация завершена')
-#TODO: menu + other functions
+    user['photo_id'] = photo
+    try:
+        user = User.model_validate(user)
+    except Exception as e:
+        logging.error(e)
+        await message.reply(text='Some error occurred in your data. Try again')
+        await first_start(message, state)
+        return
+
+    await state.update_data(user_obj=None)
+    await user_repo.save_user(user)
+    await state.set_state(MenuStates.in_menu)
+    await load_profile(user, message)

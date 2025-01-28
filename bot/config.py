@@ -15,7 +15,7 @@ load_dotenv()
 bot_key = os.getenv('BOT_KEY')
 admins = [int(admin) for admin in os.getenv('ADMINS').split(', ')]
 
-client = AsyncIOMotorClient(os.getenv('MONGODB_URL'))
+client = AsyncIOMotorClient(os.getenv('MAIN_DB_URL'))
 db = client['bot_dating']
 users = db['user_data']
 
