@@ -1,36 +1,199 @@
-from venv import logger
-
-from aiogram import Router, Bot
-from aiogram.types import Message
+import re
+import logging
+from aiogram import Router, Bot, types
+from aiogram.filters.callback_data import CallbackData
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram import F
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
-from bot.filters import AdminFilter
+from bot.config import user_repo, name_regex, age_regex
+from bot.keyboards.registration_keyb import gender_options, gender_kb, orientation_kb, orientation_options, location_kb, \
+    skip_button_kb, skip_button
+from bot.users_repository import User, Location
 
 reg_router = Router()
 
 
+class RegStates(StatesGroup):
+    waiting_for_name = State()
+    waiting_for_age = State()
+    waiting_for_gender = State()
+    waiting_for_orientation = State()
+    waiting_for_location = State()
+    waiting_for_bio = State()
+    waiting_for_city = State()
+    waiting_for_photo = State()
+
+
 @reg_router.message(Command('start'))
-async def start(message: Message, bot: Bot, cache: list[str]):
-    await message.answer(str(cache))
-    await message.answer('Hello')
-    await message.answer_dice(emoji='🎲')
+async def first_start(message: Message, state: FSMContext):
+    logging.info(f'User {message.from_user.id} started registration')
+
+    await message.reply(text='Введите имя')
+    await state.set_state(RegStates.waiting_for_name)
 
 
-@reg_router.message(F.text == 'saved')
-async def get_saved_image(message: Message):
-    return message.reply_photo('AgACAgIAAxkBAANMZ5av2t44udBSTSO45GWYCk9dx48AAgfuMRsHlrhIit66RiMwJocBAAMCAANzAAM2BA')
+@reg_router.message(RegStates.waiting_for_name)
+async def get_name(message: Message, state: FSMContext):
+    name = message.text.strip()
+
+    logging.info(f'User {message.from_user.id} entered name {name}')
+
+    if not re.match(name_regex, name):
+        await message.reply(text='Некорректное имя. Введите еще раз')
+        return
+    user = User()
+    user.user_id = message.from_user.id
+    user.username = name
+    await state.update_data(user_obj=user)
+    await message.reply(text='Введите возраст')
+    await state.set_state(RegStates.waiting_for_age)
 
 
-@reg_router.message(F.text == 'echo')
-async def echo(message: Message, cache: list[str]):
-    cache.append(message.text)
-    await message.answer(str(message.from_user.id))
-    await message.answer(str(cache))
+@reg_router.message(RegStates.waiting_for_age)
+async def get_age(message: Message, state: FSMContext):
+    age = message.text.strip()
+
+    logging.info(f'User {message.from_user.id} entered age {age}')
+
+    if not re.match(age_regex, age):
+        await message.reply(text='Некорректный возраст. Введите еще раз')
+        return
+    data = await state.get_data()
+    user = data['user_obj']
+    user.age = int(age)
+    await state.update_data(user_obj=user)
+    await message.reply(
+        text='Введите пол',
+        reply_markup=gender_kb()
+    )
+    await state.set_state(RegStates.waiting_for_gender)
 
 
-@reg_router.message(F.photo)
-async def echo_image(message: Message):
-    logger.info(f'id = {message.photo[0].file_id}')
-    await message.reply_photo(message.photo[0].file_id)
+@reg_router.message(RegStates.waiting_for_gender)
+async def get_gender(message: Message, state: FSMContext):
+    gender = message.text.strip()
+
+    logging.info(f'User {message.from_user.id} entered gender {gender}')
+
+    if gender not in gender_options:
+        await message.reply(
+            text='Некорректный пол. Введите еще раз',
+            reply_markup=gender_kb()
+        )
+        return
+    data = await state.get_data()
+    user = data['user_obj']
+    if gender == gender_options[0]:
+        user.gender = 0
+    elif gender == gender_options[1]:
+        user.gender = 1
+    elif gender == gender_options[2]:
+        user.gender = 2
+    await state.update_data(user_obj=user)
+    await message.reply(
+        text='Кого вы ищите?',
+        reply_markup=orientation_kb()
+    )
+    await state.set_state(RegStates.waiting_for_orientation)
+
+
+@reg_router.message(RegStates.waiting_for_orientation)
+async def get_orientation(message: Message, state: FSMContext):
+    orientation = message.text.strip()
+
+    logging.info(f'User {message.from_user.id} entered orientation {orientation}')
+
+    if orientation not in orientation_options:
+        await message.reply(
+            text='Некорректный ответ. Введите еще раз',
+            reply_markup=orientation_kb()
+        )
+        return
+    data = await state.get_data()
+    user = data['user_obj']
+    if orientation == orientation_options[0]:
+        user.orientation = 0
+    elif orientation == orientation_options[1]:
+        user.orientation = 1
+    else:
+        user.orientation = 2
+    await state.update_data(user_obj=user)
+    await message.reply(
+        text='Для поиска людей рядом можно выбрать местоположение',
+        reply_markup=location_kb()
+    )
+    await state.set_state(RegStates.waiting_for_location)
+
+
+@reg_router.message(RegStates.waiting_for_location)
+async def get_location(message: Message, state: FSMContext):
+    location = message.location
+    if location:
+        logging.info(f'User {message.from_user.id} sent location {location.latitude} {location.longitude}')
+
+        data = await state.get_data()
+        user = data['user_obj']
+        user.location = Location(type='Point', coordinates=[location.longitude, location.latitude])
+        await state.update_data(user_obj=user)
+        await message.reply(
+            text='Напиши что нибудь о себе',
+            reply_markup=skip_button_kb()
+        )
+        await state.set_state(RegStates.waiting_for_bio)
+
+
+@reg_router.message(RegStates.waiting_for_bio)
+async def get_bio(message: Message, state: FSMContext):
+    bio = message.text.strip()
+
+    logging.info(f'User {message.from_user.id} entered bio {bio}')
+
+    if bio != skip_button:
+        data = await state.get_data()
+        user = data['user_obj']
+        user.bio = bio
+        await state.update_data(user_obj=user)
+
+    await message.reply(
+        text='Введите город',
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await state.set_state(RegStates.waiting_for_city)
+# TODO: Add fav song or smth like that feature here
+
+
+@reg_router.message(RegStates.waiting_for_city)
+async def get_city(message: Message, state: FSMContext):
+    city = message.text.strip()
+
+    logging.info(f'User {message.from_user.id} entered city {city}')
+
+    data = await state.get_data()
+    user = data['user_obj']
+    user.city = city
+    await state.update_data(user_obj=user)
+
+    await message.reply(
+        text='Отправьте фотографию для профиля',
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await state.set_state(RegStates.waiting_for_photo)
+# TODO: Add video instead of photo option / multiple photos
+
+@reg_router.message(F.photo, RegStates.waiting_for_photo)
+async def get_photo(message: Message, state: FSMContext):
+    photo = message.photo[-1].file_id
+
+    logging.info(f'User {message.from_user.id} entered photo. id = {photo}')
+
+    data = await state.get_data()
+    user = data['user_obj']
+    user.photo_id = photo
+    await state.update_data(user_obj=user)
+    await user_repo.create_user(user)
+    await message.reply(text='Регистрация завершена')
+#TODO: menu + other functions
