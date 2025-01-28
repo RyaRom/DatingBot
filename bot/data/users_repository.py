@@ -4,6 +4,8 @@ import logging
 from motor.motor_asyncio import AsyncIOMotorCollection
 from pydantic import BaseModel
 
+from data.user_cache import get_user_cached, save_user_to_cache
+
 
 class Location(BaseModel):
     type: str = 'Point'
@@ -27,17 +29,18 @@ class UserRepository:
     def __init__(self, user_collection: AsyncIOMotorCollection):
         self.connection = user_collection
 
-    async def is_exist(self, user_id: int) -> bool:
-        userdata = await self.connection.find_one({'user_id': user_id})
-        return userdata is not None
-
     async def get_user(self, user_id: int) -> Optional[User]:
+        cached = await get_user_cached(user_id)
+        if cached:
+            return cached
+
         userdata = await self.connection.find_one({'user_id': user_id})
         if userdata:
-            return User(**userdata)
+            user = User(**userdata)
+            await save_user_to_cache(user)
+            return user
         return None
 
     async def save_user(self, user: User):
         logging.info(f'User {user.user_id} saved in db')
         await self.connection.insert_one(user.model_dump())
-# TODO: finish user repository
