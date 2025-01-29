@@ -5,8 +5,6 @@ from aioredis import Redis
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from data.users_repository import UserRepository
-
 name_regex = re.compile(r"[ а-яА-ЯёЁa-zA-Z]{2,100}")
 age_regex = re.compile(r"\d{1,3}")
 
@@ -19,8 +17,6 @@ db = client['bot_dating']
 users = db['user_data']
 
 redis = Redis.from_url(os.getenv('REDIS_URL'))
-
-user_repo = UserRepository(users)
 
 # TODO: Make a mongo storage for temp data in fsm
 # TODO: Change polling to webhook

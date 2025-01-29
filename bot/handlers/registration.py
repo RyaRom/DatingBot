@@ -7,11 +7,12 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram import F
 
-from bot.config import user_repo, name_regex, age_regex
-from bot.handlers.menu import MenuStates, load_profile
+from bot.config import name_regex, age_regex
+from bot.handlers.menu import MenuStates, default_menu
 from bot.keyboards.registration_keyb import gender_options, gender_kb, orientation_kb, orientation_options, location_kb, \
     skip_button_kb, skip_button
-from data.users_repository import User
+from data.user_model import User
+from data.users_repository import user_repo
 
 reg_router = Router()
 
@@ -27,8 +28,17 @@ class RegStates(StatesGroup):
     waiting_for_photo = State()
 
 
+# first login
 @reg_router.message(Command('start'))
 async def first_start(message: Message, state: FSMContext):
+    profile = await user_repo.get_user(message.from_user.id)
+    if profile:
+        await default_menu(message, state, profile)
+        return
+    await start_reg(message, state)
+
+
+async def start_reg(message: Message, state: FSMContext):
     logging.info(f'User {message.from_user.id} started registration')
 
     await message.answer(text='Введите имя')
@@ -205,5 +215,4 @@ async def get_photo(message: Message, state: FSMContext):
 
     await state.update_data(user_obj=None)
     await user_repo.save_user(user)
-    await state.set_state(MenuStates.in_menu)
-    await load_profile(user, message)
+    await default_menu(message, state)
