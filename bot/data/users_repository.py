@@ -52,7 +52,8 @@ class UserRepository:
             self,
             user: User,
             excluded_ids: list[int],
-            limit: int = 15) -> list[User]:
+            limit: int = 15,
+            age_range: int = 5) -> list[User]:
         excluded_ids.append(user.user_id)
         recs = self.connection.aggregate(
             [
@@ -62,7 +63,13 @@ class UserRepository:
                     'distanceField': 'distance'
                 }},
                 {'$match': {'user_id': {'$nin': excluded_ids},
-                            'age': {'$gte': user.age - 5, '$lte': user.age + 5}}},
+                            'age': {'$gte': user.age - age_range, '$lte': user.age + age_range},
+                            '$and': [{
+                                '$or': [{'gender': user.orientation}, {'gender': 2}]
+                            }, {
+                                '$or': [{'orientation': user.gender}, {'orientation': 2}]
+                            }]
+                            }},
                 {'$sample': {'size': limit}}
             ]
         )
