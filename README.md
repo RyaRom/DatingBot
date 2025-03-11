@@ -12,6 +12,7 @@ a simple telegram dating bot project with aiogram
 - [ ] random chat
 - [ ] admin page
 - [ ] more complex recomendation system
+- ...
 
 ## How to start:
 - set up mongo and redis
