@@ -17,4 +17,5 @@ a simple telegram dating bot project with aiogram
 ## How to start:
 - set up mongo and redis
 - create .env file like in .examle
-- run main file
+- install requirements.txt
+- run bot/main.py
