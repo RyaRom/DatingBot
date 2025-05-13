@@ -3,11 +3,11 @@
 a simple telegram dating bot project with aiogram
 
 ## Progress
-- [ ] dating app MVP
+- [x] dating app MVP
   - [x] basic profile setup
   - [x] set up db and cache for recomendations
-  - [ ] complete UI for profile settings
-  - [ ] more features for user (hobbies/cities)
+  - [x] complete UI for profile settings
+- [ ] more features for user (hobbies/cities)
 - [ ] vidoes/gifs instead of profile picture
 - [ ] random chat
 - [ ] admin page
